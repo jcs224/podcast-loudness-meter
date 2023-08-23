@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Podcast Loudness Meter</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous" defer></script>
+</head>
+<body>
+  <div class="container" id="app">
+    <div class="row justify-content-md-center">
+      <div class="col-md-8 col-lg-6">
+        <h1 class="text-center mt-3">Podcast Loudness Meter</h1>
+        <p class="text-center mt-4">Just load your audio file into the input field and make sure your audio is within the overall desired LUFS thresholds of the major podcast providers.</p>
+        <p class="text-center mt-3">For large files, calculation can take some time.</p>
+    
+        <div class="mt-4">
+          <input type="file" class="form-control" ref="audioFileInput" @change="setAudioFile">
+        </div>
+    
+        <div class="mt-4">
+          <h2 style="display: none;" class="mt-3" v-show="audioFile">{{ audioFileLoudness ? audioFileLoudness + ' LUFS' : 'Calculating...'}}</h2>
+        </div>
+        <div class="mt-4" style="display: none;" v-show="audioFileLoudness">
+          <div v-if="audioFileLoudness <= very_quiet" class="alert alert-warning">This file is very quiet.</div>
+          <div v-if="audioFileLoudness < min_recommended && audioFileLoudness > very_quiet" class="alert alert-warning">This file is a somewhat quiet.</div>
+          <div v-if="audioFileLoudness >= min_recommended && audioFileLoudness <= max_recommended" class="alert alert-success">This file is at a good overall loudness for most podcast providers.</div>
+          <div v-if="audioFileLoudness > max_recommended && audioFileLoudness < very_loud" class="alert alert-warning">This file is a somewhat loud.</div>
+          <div v-if="audioFileLoudness >= very_loud" class="alert alert-danger">This file is very loud.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createApp, ref, watch } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+    import { LoudnessMeter } from 'https://esm.sh/@domchristie/needles@0.0.2-1'
+    import debounce from 'https://esm.sh/lodash-es@4.17.21/debounce'
+
+    createApp({
+      setup() {
+        const audioFileInput = ref(null)
+        const audioFile = ref(null)
+        const audioFileLoudness = ref('')
+        const showStatus = ref(false)
+
+        const very_quiet = -20
+        const min_recommended = -16 // Apple
+        const max_recommended = -14 // Everyone else
+        const very_loud = -11
+
+        const setAudioFile = async (e) => {
+          audioFileLoudness.value = ''
+          audioFile.value = e.target.files[0]
+
+          const AudioContext = window.AudioContext || window.webkitAudioContext
+          const audioContext = new AudioContext()
+
+          const audioData = await audioContext.decodeAudioData(await audioFile.value.arrayBuffer(), (buffer) => {
+            const OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext
+            const offlineAudioContext = new OfflineAudioContext(
+              buffer.numberOfChannels,
+              buffer.length,
+              buffer.sampleRate
+            )
+
+            const source = offlineAudioContext.createBufferSource()
+            source.buffer = buffer
+
+            const loudnessMeter = new LoudnessMeter({
+              source,
+              modes: ['integrated'],
+              workerUri: '/needles-worker.js'
+            })
+
+            let count = 0
+
+            loudnessMeter.on('dataavailable', function (event) {
+              audioFileLoudness.value = event.data.value.toFixed(2)
+            })
+
+            loudnessMeter.start()
+          })
+        }
+
+        return {
+          audioFileInput,
+          audioFile,
+          audioFileLoudness,
+          setAudioFile,
+          min_recommended,
+          max_recommended,
+          very_loud,
+          very_quiet,
+          showStatus
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>
