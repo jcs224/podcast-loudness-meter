@@ -24,9 +24,9 @@
         </div>
         <div class="mt-4" style="display: none;" v-show="audioFileLoudness">
           <div v-if="audioFileLoudness <= very_quiet" class="alert alert-danger">This file is very quiet.</div>
-          <div v-if="audioFileLoudness < min_recommended && audioFileLoudness > very_quiet" class="alert alert-warning">This file is a somewhat quiet.</div>
+          <div v-if="audioFileLoudness < min_recommended && audioFileLoudness > very_quiet" class="alert alert-warning">This file is somewhat quiet.</div>
           <div v-if="audioFileLoudness >= min_recommended && audioFileLoudness <= max_recommended" class="alert alert-success">This file is at a good overall loudness for most podcast providers.</div>
-          <div v-if="audioFileLoudness > max_recommended && audioFileLoudness < very_loud" class="alert alert-warning">This file is a somewhat loud.</div>
+          <div v-if="audioFileLoudness > max_recommended && audioFileLoudness < very_loud" class="alert alert-warning">This file is somewhat loud.</div>
           <div v-if="audioFileLoudness >= very_loud" class="alert alert-danger">This file is very loud.</div>
         </div>
       </div>
